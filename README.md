@@ -1,3 +1,3 @@
 # task_app_flutter
 
-A new Flutter project.
+Aplicativo de listas de tarefas em Flutter
