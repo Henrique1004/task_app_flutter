@@ -4,8 +4,7 @@ import 'package:task_app_flutter/database/listas_bd.dart';
 import 'package:task_app_flutter/entities/usuario.dart';
 
 class ListasConcluidasView extends StatelessWidget {
-  
-  final Usuario usuario;
+  final UsuarioDTO usuario;
 
   const ListasConcluidasView({super.key, required this.usuario});
 
@@ -20,9 +19,7 @@ class ListasConcluidasView extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Consumer<ListasBD>(
           builder: (context, listasBD, child) {
-            final listasConcluidas = ListasBD.listas
-                .where((lista) => lista.concluida && lista.criador.email == usuario.email)
-                .toList();
+            final listasConcluidas = listasBD.getListasConcluidasDoUsuario(usuario.uid);
 
             if (listasConcluidas.isEmpty) {
               return const Center(
@@ -39,7 +36,7 @@ class ListasConcluidasView extends StatelessWidget {
                   child: ListTile(
                     leading: const Icon(Icons.check_circle, color: Colors.green),
                     title: Text(
-                      lista.nome,
+                      lista['nome'] ?? 'Sem nome',
                       style: const TextStyle(
                         decoration: TextDecoration.lineThrough,
                         color: Colors.grey,

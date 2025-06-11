@@ -5,7 +5,7 @@ class TodoList {
 
   List<Atividade> listaAtividades;
   String nome;
-  Usuario criador;
+  UsuarioDTO criador;
   bool concluida;
 
   TodoList(this.listaAtividades, this.nome, this.criador, [this.concluida = false]);

@@ -1,56 +1,71 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:task_app_flutter/entities/atividade.dart';
 import 'package:task_app_flutter/database/listas_bd.dart';
-import 'package:task_app_flutter/entities/todo_list.dart';
 import 'package:task_app_flutter/entities/usuario.dart';
 
 class AdListaView extends StatefulWidget {
-
-  final Usuario usuario;
+  final UsuarioDTO usuario;
 
   const AdListaView({super.key, required this.usuario});
 
   @override
   _AdListaViewState createState() => _AdListaViewState();
-
 }
 
 class _AdListaViewState extends State<AdListaView> {
-  
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _atividadeController = TextEditingController();
-  List<Atividade> _atividades = [];
+
+  List<Map<String, dynamic>> _atividades = [];
 
   void _adicionarAtividade() {
     if (_atividadeController.text.isNotEmpty) {
       setState(() {
-        _atividades.add(Atividade(_atividadeController.text));
+        _atividades.add({
+          'nome': _atividadeController.text,
+          'concluida': false,
+        });
         _atividadeController.clear();
       });
     }
   }
 
-  void _salvarLista(BuildContext context) {
-    if(_nomeController.text.isEmpty) {
+  Future<void> _salvarLista(BuildContext context) async {
+    if (_nomeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Insira um nome para a lista!')),
+        const SnackBar(content: Text('Insira um nome para a lista!')),
       );
-    } else if(_atividades.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Insira pelo menos uma atividade!')),
-      );
+      return;
     }
-    else {
-      final lista = TodoList(_atividades, _nomeController.text, widget.usuario);
+    if (_atividades.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Insira pelo menos uma atividade!')),
+      );
+      return;
+    }
 
-      Provider.of<ListasBD>(context, listen: false).adTodoList(lista);
+    final novaListaData = {
+      'nome': _nomeController.text,
+      'criador_uid': widget.usuario.uid,
+      'concluida': false,
+      'lista_atividades': _atividades,
+    };
+
+
+    try {
+      await Provider.of<ListasBD>(context, listen: false)
+          .adTodoList(novaListaData);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Lista "${_nomeController.text}" salva!')),
       );
 
       Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar lista: $e')),
+      );
     }
   }
 
@@ -93,8 +108,9 @@ class _AdListaViewState extends State<AdListaView> {
               child: ListView.builder(
                 itemCount: _atividades.length,
                 itemBuilder: (context, index) {
+                  final atividade = _atividades[index];
                   return ListTile(
-                    title: Text(_atividades[index].nome),
+                    title: Text(atividade['nome']),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () {

@@ -1,6 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:task_app_flutter/entities/usuario.dart';
-import 'package:task_app_flutter/database/usuario_bd.dart';
 
 class LoginView extends StatefulWidget {
 
@@ -16,28 +17,47 @@ class _LoginViewState extends State<LoginView> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
-  void _login(String email, String senha) {
-    if (_formKey.currentState!.validate()) {
-      UsuarioBD usuarioBD = UsuarioBD();
-      Usuario? usuario = usuarioBD.getUsuario(email, senha);
+void _login(String email, String senha) {
+  FirebaseAuth.instance
+      .signInWithEmailAndPassword(email: email, password: senha)
+      .then((res) async {
+    final uid = res.user!.uid;
 
-      if (usuario != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bem-vindo ${usuario.nome}!')),
-        );
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('uid', isEqualTo: uid)
+        .limit(1)
+        .get();
 
-        Navigator.pushNamed(
-          context,
-          'listas',
-          arguments: usuario,
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Usuário ou senha inválidos')),
-        );
-      }
+    if (query.docs.isNotEmpty) {
+      final doc = query.docs.first;
+      final data = doc.data();
+      final nome = data['nome'] ?? 'Usuário';
+
+      UsuarioDTO usuario = UsuarioDTO(
+        uid,
+        nome,
+      );
+
+      exibirSucesso(nome);
+      Navigator.pushReplacementNamed(
+        context,
+        'listas',
+        arguments: usuario,
+      );
+    } else {
+      UsuarioDTO usuario = UsuarioDTO(uid, 'Usuário');
+      exibirSucesso(usuario.nome);
+      Navigator.pushReplacementNamed(
+        context,
+        'listas',
+        arguments: usuario,
+      );
     }
-  }
+  }).catchError((e) {
+    exibirErro();
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -134,4 +154,25 @@ class _LoginViewState extends State<LoginView> {
       ),
     );
   }
+  
+  void exibirSucesso(String nome) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Bem-vindo ${nome}!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+  
+  void exibirErro() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Usuário ou senha inválidos'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
 }

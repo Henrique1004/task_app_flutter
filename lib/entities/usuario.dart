@@ -1,10 +1,8 @@
-class Usuario {
+class UsuarioDTO {
   
+  String uid;
   String nome;
-  String email;
-  String celular;
-  String senha;
 
-  Usuario(this.nome, this.email, this.celular, this.senha);
+  UsuarioDTO(this.uid, this.nome);
 
 }

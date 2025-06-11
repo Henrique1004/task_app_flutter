@@ -5,8 +5,7 @@ import 'package:task_app_flutter/entities/usuario.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class EstatisticasView extends StatelessWidget {
-
-  final Usuario usuario;
+  final UsuarioDTO usuario;
 
   const EstatisticasView({super.key, required this.usuario});
 
@@ -21,22 +20,21 @@ class EstatisticasView extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Consumer<ListasBD>(
           builder: (context, listasBD, child) {
-            final listas = ListasBD.listas
-                .where((lista) => lista.criador.email == usuario.email)
-                .toList();
+            final listas = listasBD.getListasDoUsuario(usuario.uid);
 
             int totalListas = listas.length;
             int totalTarefas = 0;
             int tarefasConcluidas = 0;
 
             for (var lista in listas) {
-              totalTarefas += lista.listaAtividades.length;
-              tarefasConcluidas += lista.listaAtividades
-                  .where((atividade) => atividade.concluida)
-                  .length;
+              final atividades = List<Map<String, dynamic>>.from(lista['lista_atividades'] ?? []);
+              totalTarefas += atividades.length;
+              tarefasConcluidas += atividades.where((a) => a['concluida'] == true).length;
             }
 
-            double porcentagemConclusao = totalTarefas > 0 ? (tarefasConcluidas / totalTarefas) * 100 : 0;
+            double porcentagemConclusao = totalTarefas > 0
+                ? (tarefasConcluidas / totalTarefas) * 100
+                : 0;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +71,7 @@ class EstatisticasView extends StatelessWidget {
                 Expanded(
                   child: BarChart(
                     BarChartData(
-                      maxY: 100, // fixa o eixo Y até 100%
+                      maxY: 100,
                       alignment: BarChartAlignment.spaceAround,
                       barTouchData: BarTouchData(enabled: false),
                       titlesData: FlTitlesData(
@@ -82,10 +80,9 @@ class EstatisticasView extends StatelessWidget {
                             showTitles: true,
                             getTitlesWidget: (double value, _) {
                               if (value < listas.length) {
+                                final nome = listas[value.toInt()]['nome'] ?? 'Lista';
                                 return Text(
-                                  listas[value.toInt()].nome.length > 5
-                                      ? '${listas[value.toInt()].nome.substring(0, 5)}...'
-                                      : listas[value.toInt()].nome,
+                                  nome.length > 5 ? '${nome.substring(0, 5)}...' : nome,
                                   style: const TextStyle(fontSize: 10),
                                 );
                               }
@@ -93,25 +90,18 @@ class EstatisticasView extends StatelessWidget {
                             },
                           ),
                         ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
                       barGroups: listas.asMap().entries.map((entry) {
                         final index = entry.key;
                         final lista = entry.value;
-                        final total = lista.listaAtividades.length;
-                        final concluidas = lista.listaAtividades
-                            .where((a) => a.concluida)
-                            .length;
-                        final double progresso = total > 0 ? (concluidas / total) * 100 : 0;
+                        final atividades = List<Map<String, dynamic>>.from(lista['lista_atividades'] ?? []);
+                        final total = atividades.length;
+                        final concluidas = atividades.where((a) => a['concluida'] == true).length;
+                        final double progresso = total > 0 ? (concluidas / total) * 100.0 : 0.0;
 
                         return BarChartGroupData(x: index, barRods: [
                           BarChartRodData(
@@ -119,7 +109,7 @@ class EstatisticasView extends StatelessWidget {
                             color: Colors.blue,
                             width: 14,
                             borderRadius: BorderRadius.circular(6),
-                          )
+                          ),
                         ]);
                       }).toList(),
                     ),

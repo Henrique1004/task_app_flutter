@@ -1,6 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:task_app_flutter/entities/usuario.dart';
-import 'package:task_app_flutter/database/usuario_bd.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class CadastroView extends StatefulWidget {
@@ -27,15 +27,23 @@ class _CadastroScreenState extends State<CadastroView> {
 
   void _cadastrar(String nome, String email, String telefone, String senha) {
     if (_formKey.currentState!.validate()) {
-      Usuario usuario = Usuario(nome, email, telefone, senha);
-      UsuarioBD usuarioBD = UsuarioBD();
-      usuarioBD.adUsuario(usuario);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cadastro realizado com sucesso!')),
-      );
-      Navigator.pop(context);
-    }
+      FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: senha)
+          .then((res) {
+        FirebaseFirestore.instance.collection('users').add({
+          "uid": res.user!.uid.toString(),
+          "nome": nome,
+          "email": email,
+          "telefone": telefone,
+        });
+        exibirSucesso();
+        Navigator.pop(context);
+      }).catchError((e) {
+          exibirErro();
+      });
+    }  
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +97,24 @@ class _CadastroScreenState extends State<CadastroView> {
                 controller: _senhaController,
                 decoration: InputDecoration(labelText: 'Senha'),
                 obscureText: true,
-                validator: (value) => value!.length < 6
-                    ? 'A senha deve ter pelo menos 6 caracteres'
-                    : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Informe a senha';
+                  }
+                  if (value.length < 6) {
+                    return 'A senha deve ter pelo menos 6 caracteres';
+                  }
+
+                  final hasUppercase = value.contains(RegExp(r'[A-Z]'));
+                  final hasLowercase = value.contains(RegExp(r'[a-z]'));
+                  final hasDigit = value.contains(RegExp(r'\d'));
+                  final hasSpecialChar = value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
+                  if (!(hasUppercase && hasLowercase && hasDigit && hasSpecialChar)) {
+                    return 'Senha fraca. Use letras maiúsculas, minúsculas, números \ne caracteres especiais.';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
                 controller: _confirmarSenhaController,
@@ -110,6 +133,26 @@ class _CadastroScreenState extends State<CadastroView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void exibirSucesso() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Cadastro realizado com sucesso!'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+  
+  void exibirErro() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Houve um erro ao realizar cadastro.'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
       ),
     );
   }
